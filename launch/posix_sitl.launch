@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<launch>
+    <env name="GAZEBO_MODEL_PATH" value="$(find gazebo_sim)/gazebo/models" />
+    <env name="GAZEBO_PLUGIN_PATH" value="$(env HOME)/ground_ws/devel/lib" />
+    <arg name="est" default="ekf2"/>
+    <arg name="vehicle" default="iris"/>
+    <arg name="world" default="$(find gazebo_sim)/gazebo/worlds/empty.world"/>
+    <env name="PX4_SIM_MODEL" value="gazebo-classic_$(arg vehicle)" />
+    <arg name="gui" default="true"/>
+    <arg name="debug" default="false"/>
+    <arg name="verbose" default="true"/>
+    <arg name="paused" default="false"/>
+    <arg name="respawn_gazebo" default="false"/>
+
+    <arg name="interactive" default="true"/>
+
+    <!-- Gazebo sim -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="world_name" value="$(arg world)"/>
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="verbose" value="$(arg verbose)"/>
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="respawn_gazebo" value="$(arg respawn_gazebo)"/>
+    </include>
+    <node name="spawn_iris" pkg="gazebo_ros" type="spawn_model" output="screen"
+      args="-sdf -file $(find gazebo_sim)/gazebo/models/iris_mid360/iris.sdf -model iris -x 0 -y 0 -z 0">
+    <param name="respawn" value="false"/>
+    </node>
+</launch>
