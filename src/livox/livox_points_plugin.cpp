@@ -5,6 +5,8 @@
 #include "livox_laser_simulation/livox_points_plugin_cpu.h"
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
 #include <gazebo/physics/Model.hh>
 #include <gazebo/physics/MultiRayShape.hh>
 #include <gazebo/physics/PhysicsEngine.hh>
@@ -82,7 +84,7 @@ void LivoxPointsPlugin::Load(gazebo::sensors::SensorPtr _parent,
     ns = rosElem->Get<std::string>("namespace");
   }
   rosNode    .reset(new ros::NodeHandle(ns));
-  rosPointPub = rosNode->advertise<sensor_msgs::PointCloud>(scanTopic, 5);
+  rosPointPub = rosNode->advertise<sensor_msgs::PointCloud2>(scanTopic, 5);
 
   raySensor = _parent;
   node      = transport::NodePtr(new transport::Node());
@@ -132,14 +134,13 @@ void LivoxPointsPlugin::OnNewLaserScans() {
     if (rayShape) {
         std::vector<std::pair<int, AviaRotateInfo>> points_pair;
         InitializeRays(points_pair, rayShape);
-        rayShape->Update();
+        rayShape->
+        Update();
 
         msgs::Set(laserMsg.mutable_time(), world->SimTime());
         msgs::LaserScan *scan = laserMsg.mutable_scan();
         InitializeScan(scan);
-
         SendRosTf(parentEntity->WorldPose(), world->Name(), raySensor->ParentName());
-
         auto rayCount = RayCount();
         auto verticalRayCount = VerticalRayCount();
         auto angle_min = AngleMin().Radian();
@@ -147,48 +148,40 @@ void LivoxPointsPlugin::OnNewLaserScans() {
         auto verticle_min = VerticalAngleMin().Radian();
         auto verticle_incre = VerticalAngleResolution();
 
-        sensor_msgs::PointCloud scan_point;
+        sensor_msgs::PointCloud2 scan_point;
         scan_point.header.stamp = ros::Time::now();
         scan_point.header.frame_id = raySensor->Name();
-        auto &scan_points = scan_point.points;
+        scan_point.height = 1;                          
+        scan_point.width = points_pair.size();  
+        sensor_msgs::PointCloud2Modifier modifier(scan_point);
+        modifier.setPointCloud2Fields(4,
+        "x", 1, sensor_msgs::PointField::FLOAT32,
+        "y", 1, sensor_msgs::PointField::FLOAT32,
+        "z", 1, sensor_msgs::PointField::FLOAT32,
+        "intensity", 1, sensor_msgs::PointField::FLOAT32);
+        modifier.resize(points_pair.size());
 
+        sensor_msgs::PointCloud2Iterator<float> iter_x(scan_point, "x");
+        sensor_msgs::PointCloud2Iterator<float> iter_y(scan_point, "y");
+        sensor_msgs::PointCloud2Iterator<float> iter_z(scan_point, "z");
+        sensor_msgs::PointCloud2Iterator<float> iter_intensity(scan_point, "intensity");
         for (auto &pair : points_pair) {
-            //int verticle_index = roundf((pair.second.zenith - verticle_min) / verticle_incre);
-            //int horizon_index = roundf((pair.second.azimuth - angle_min) / angle_incre);
-            //if (verticle_index < 0 || horizon_index < 0) {
-            //   continue;
-            //}
-            //if (verticle_index < verticalRayCount && horizon_index < rayCount) {
-            //   auto index = (verticalRayCount - verticle_index - 1) * rayCount + horizon_index;
                 auto range = rayShape->GetRange(pair.first);
                 auto intensity = rayShape->GetRetro(pair.first);
-                if (range >= RangeMax()) {
+                if (range >= RangeMax() || range <= RangeMin()) {
                     range = 0;
-                } else if (range <= RangeMin()) {
-                    range = 0;
+                    intensity = 0;
                 }
-                //scan->set_ranges(index, range);
-                //scan->set_intensities(index, intensity);
-
                 auto rotate_info = pair.second;
                 ignition::math::Quaterniond ray;
                 ray.Euler(ignition::math::Vector3d(0.0, rotate_info.zenith, rotate_info.azimuth));
-                //                auto axis = rotate * ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
-                //                auto point = range * axis + world_pose.Pos();//转换成世界坐标系
-
                 auto axis = ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
                 auto point = range * axis;
-                scan_points.emplace_back();
-                scan_points.back().x = point.X();
-                scan_points.back().y = point.Y();
-                scan_points.back().z = point.Z();
-            //} else {
-
-            //    //                ROS_INFO_STREAM("count is wrong:" << verticle_index << "," << verticalRayCount << ","
-            //    //                << horizon_index
-            //    //                          << "," << rayCount << "," << pair.second.zenith << "," <<
-            //    //                          pair.second.azimuth);
-            //}
+                *iter_x = point.X();
+                *iter_y = point.Y();
+                *iter_z = point.Z();
+                *iter_intensity = intensity;
+                ++iter_x; ++iter_y; ++iter_z; ++iter_intensity;
         }
         if (scanPub && scanPub->HasConnections()) scanPub->Publish(laserMsg);
         rosPointPub.publish(scan_point);

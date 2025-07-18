@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <env name="GAZEBO_MODEL_PATH" value="$(find gazebo_sim)/gazebo/models" />
-    <env name="GAZEBO_PLUGIN_PATH" value="$(env HOME)/ground_ws/devel/lib" />
+    <env name="GAZEBO_MODEL_PATH" value="$(find gazebo_sim)/gazebo/models:/home/zg/.gazebo/models:~/src/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic/models" />
+    <env name="GAZEBO_PLUGIN_PATH" value="$(env HOME)/inbge_ws/devel/lib" />
     <arg name="est" default="ekf2"/>
     <arg name="vehicle" default="iris"/>
     <arg name="world" default="$(find gazebo_sim)/gazebo/worlds/empty.world"/>
@@ -11,9 +11,9 @@
     <arg name="verbose" default="true"/>
     <arg name="paused" default="false"/>
     <arg name="respawn_gazebo" default="false"/>
-
-    <arg name="interactive" default="true"/>
-
+    <arg name="interactive" default="false"/>
+    <arg unless="$(arg interactive)" name="px4_command_arg1" value="-d"/>
+    <arg     if="$(arg interactive)" name="px4_command_arg1" value=""/>
     <!-- Gazebo sim -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="gui" value="$(arg gui)"/>
@@ -24,7 +24,17 @@
         <arg name="respawn_gazebo" value="$(arg respawn_gazebo)"/>
     </include>
     <node name="spawn_iris" pkg="gazebo_ros" type="spawn_model" output="screen"
-      args="-sdf -file $(find gazebo_sim)/gazebo/models/iris_mid360/iris.sdf -model iris -x 0 -y 0 -z 0">
+      args="-sdf -file $(find gazebo_sim)/gazebo/models/iris_mid360/iris.sdf -model iris -x 20 -y 0 -z 10">
     <param name="respawn" value="false"/>
+
+    </node>
+        <node name="px4" pkg="px4" type="px4" output="screen" required="true" 
+        args="$(arg px4_command_arg1)">
+        <param name="estimator" value="$(arg est)"/>
+        <param name="vehicle" value="$(arg vehicle)"/>
+        <param name="verbose" value="$(arg verbose)"/>
+        <param name="debug" value="$(arg debug)"/>
+        <param name="paused" value="$(arg paused)"/>
+        <param name="sim_model" value="gazebo-classic_$(arg vehicle)"/>
     </node>
 </launch>

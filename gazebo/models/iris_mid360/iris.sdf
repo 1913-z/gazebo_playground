@@ -419,6 +419,15 @@
       <motorSpeedPubTopic>/motor_speed/3</motorSpeedPubTopic>
       <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
     </plugin>
+     <include>
+      <uri>model://gps</uri>
+      <pose>0.05 0 0.04 0 0 0</pose>
+      <name>gps0</name>
+    </include>
+    <joint name='gps0_joint' type='fixed'>
+      <child>gps0::link</child>
+      <parent>base_link</parent>
+    </joint>
     <plugin name='groundtruth_plugin' filename='libgazebo_groundtruth_plugin.so'>
       <robotNamespace/>
     </plugin>
@@ -613,7 +622,7 @@
         <ros><namespace>/livox</namespace></ros>
         <ros_topic>points</ros_topic>
         <csv_file_name>/home/zg/ground_ws/src/gazebo_playground/gazebo/models/iris_mid360/meshes/mid360.csv</csv_file_name>
-        <samples>30000</samples>
+        <samples>20000</samples>
         <downsample>1</downsample>
       </plugin>
     </sensor>
